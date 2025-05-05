@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -5,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
-import { Check, X, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Check, X, Plus, Trash2, AlertTriangle, Carrot } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Toggle } from "@/components/ui/toggle";
 
 interface MealPlanItem {
   food: string;
@@ -38,6 +40,9 @@ const MealPlan = () => {
   // Dietary restrictions state
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
   
+  // Vegetarian toggle state
+  const [isVegetarian, setIsVegetarian] = useState(false);
+  
   // Allergies state
   const [allergies, setAllergies] = useState({
     gluten: false,
@@ -53,7 +58,7 @@ const MealPlan = () => {
     if (dietType || totalCalories) {
       fetchMealPlan();
     }
-  }, [dietType, totalCalories, dietaryRestrictions]);
+  }, [dietType, totalCalories, dietaryRestrictions, isVegetarian]);
 
   const fetchMealPlan = async () => {
     if (loading) return; // Prevent multiple simultaneous requests
@@ -127,6 +132,33 @@ const MealPlan = () => {
               { food: "Apple", "quantity (multiplier)": 1, calories: 80 }
             ]
           };
+        }
+        
+        // Filter based on vegetarian preference
+        if (isVegetarian) {
+          // Remove non-vegetarian items
+          Object.keys(mockData).forEach(mealType => {
+            mockData[mealType] = mockData[mealType].filter(
+              item => !item.food.toLowerCase().includes("chicken") && 
+                     !item.food.toLowerCase().includes("salmon") &&
+                     !item.food.toLowerCase().includes("beef") &&
+                     !item.food.toLowerCase().includes("fish")
+            );
+          });
+          
+          // Add vegetarian alternatives if meals are removed
+          if (mockData.breakfast.length < 2) {
+            mockData.breakfast.push({ food: "Vegetarian breakfast scramble", "quantity (multiplier)": 1, calories: 250 });
+          }
+          
+          if (mockData.lunch.length < 2) {
+            mockData.lunch.push({ food: "Hummus and vegetable wrap", "quantity (multiplier)": 1, calories: 320 });
+          }
+          
+          if (mockData.dinner.length < 2) {
+            mockData.dinner.push({ food: "Lentil curry with rice", "quantity (multiplier)": 1, calories: 380 });
+            mockData.dinner.push({ food: "Steamed vegetables", "quantity (multiplier)": 1, calories: 120 });
+          }
         }
         
         // Filter based on allergies and dietary restrictions
@@ -338,8 +370,6 @@ const MealPlan = () => {
                     <SelectItem value="balanced">Balanced</SelectItem>
                     <SelectItem value="low_carb">Low Carb</SelectItem>
                     <SelectItem value="low_sodium">Low Sodium</SelectItem>
-                    <SelectItem value="high_protein">High Protein</SelectItem>
-                    <SelectItem value="vegetarian">Vegetarian</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -359,6 +389,28 @@ const MealPlan = () => {
                     className="flex-grow"
                   />
                   <span className="text-xs">3500</span>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Meal Type</label>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant={isVegetarian ? "default" : "outline"}
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => setIsVegetarian(true)}
+                  >
+                    <Carrot className="w-4 h-4" />
+                    Vegetarian
+                  </Button>
+                  <Button 
+                    variant={!isVegetarian ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsVegetarian(false)}
+                  >
+                    Non-Vegetarian
+                  </Button>
                 </div>
               </div>
             </div>
