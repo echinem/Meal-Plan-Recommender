@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
-import { Check, X } from "lucide-react";
+import { Check, X, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface MealPlanItem {
@@ -25,6 +24,13 @@ const MealPlan = () => {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // New state for custom meal input
+  const [newMealName, setNewMealName] = useState("");
+  const [newMealType, setNewMealType] = useState("");
+  const [newMealQuantity, setNewMealQuantity] = useState(1);
+  const [newMealCalories, setNewMealCalories] = useState(0);
+  const [showAddMealForm, setShowAddMealForm] = useState(false);
 
   const fetchMealPlan = async () => {
     setLoading(true);
@@ -82,6 +88,81 @@ const MealPlan = () => {
     return Object.values(mealPlan).reduce((total, mealItems) => {
       return total + mealItems.reduce((mealTotal, item) => mealTotal + item.calories, 0);
     }, 0);
+  };
+  
+  // Function to add a custom meal
+  const handleAddMeal = () => {
+    if (!mealPlan) {
+      toast({
+        title: "No meal plan",
+        description: "Generate a meal plan first before adding custom meals.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!newMealName || !newMealType || newMealCalories <= 0) {
+      toast({
+        title: "Missing information",
+        description: "Please fill all fields to add a custom meal.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Create updated meal plan with the new meal
+    const updatedMealPlan = { ...mealPlan };
+    
+    // If this is a new meal type not in the plan yet
+    if (!updatedMealPlan[newMealType]) {
+      updatedMealPlan[newMealType] = [];
+    }
+    
+    // Add the new meal item
+    updatedMealPlan[newMealType].push({
+      food: newMealName,
+      'quantity (multiplier)': newMealQuantity,
+      calories: newMealCalories
+    });
+    
+    // Update state
+    setMealPlan(updatedMealPlan);
+    
+    // Reset form
+    setNewMealName("");
+    setNewMealCalories(0);
+    setNewMealQuantity(1);
+    setShowAddMealForm(false);
+    
+    toast({
+      title: "Meal added",
+      description: `${newMealName} has been added to your meal plan.`,
+    });
+  };
+  
+  // Function to remove a meal item
+  const handleRemoveMeal = (mealType: string, index: number) => {
+    if (!mealPlan) return;
+    
+    const updatedMealPlan = { ...mealPlan };
+    updatedMealPlan[mealType] = [...updatedMealPlan[mealType]];
+    const removedItem = updatedMealPlan[mealType][index];
+    
+    // Remove the item
+    updatedMealPlan[mealType].splice(index, 1);
+    
+    // If this was the last item in this meal type, remove the meal type
+    if (updatedMealPlan[mealType].length === 0) {
+      delete updatedMealPlan[mealType];
+    }
+    
+    // Update state
+    setMealPlan(updatedMealPlan);
+    
+    toast({
+      title: "Meal removed",
+      description: `${removedItem.food} has been removed from your meal plan.`,
+    });
   };
 
   return (
@@ -173,12 +254,77 @@ const MealPlan = () => {
             <div className="mt-6 border-t pt-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Your Daily Meals</h3>
-                <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                  {getTotalCalories()} calories
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    {getTotalCalories()} calories
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => setShowAddMealForm(!showAddMealForm)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    {showAddMealForm ? "Cancel" : "Add Meal"}
+                  </Button>
+                </div>
               </div>
               
-              <Tabs defaultValue="breakfast">
+              {/* Add meal form */}
+              {showAddMealForm && (
+                <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
+                  <h4 className="text-sm font-medium mb-3">Add Custom Meal</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-sm mb-1">Food Name</label>
+                      <Input 
+                        value={newMealName}
+                        onChange={e => setNewMealName(e.target.value)}
+                        placeholder="e.g., Greek yogurt with honey"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Meal Type</label>
+                      <Select value={newMealType} onValueChange={setNewMealType}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select meal type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mealPlan && Object.keys(mealPlan).map(type => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
+                          <SelectItem value="snacks">snacks</SelectItem>
+                          <SelectItem value="breakfast">breakfast</SelectItem>
+                          <SelectItem value="lunch">lunch</SelectItem>
+                          <SelectItem value="dinner">dinner</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Quantity</label>
+                      <Input 
+                        type="number" 
+                        value={newMealQuantity}
+                        onChange={e => setNewMealQuantity(Number(e.target.value))}
+                        min={0.1}
+                        step={0.1}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Calories</label>
+                      <Input 
+                        type="number" 
+                        value={newMealCalories}
+                        onChange={e => setNewMealCalories(Number(e.target.value))}
+                        min={1}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleAddMeal}>Add to Meal Plan</Button>
+                </div>
+              )}
+              
+              <Tabs defaultValue={Object.keys(mealPlan)[0] || "breakfast"}>
                 <TabsList className="grid grid-cols-4 mb-4">
                   {Object.keys(mealPlan).map((meal) => (
                     <TabsTrigger key={meal} value={meal} className="capitalize">
@@ -201,8 +347,15 @@ const MealPlan = () => {
                               Quantity: {item['quantity (multiplier)']}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="flex items-center gap-2">
                             <span className="block font-semibold">{item.calories} cal</span>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleRemoveMeal(meal, index)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
                           </div>
                         </div>
                       ))}
