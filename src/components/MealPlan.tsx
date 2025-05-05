@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,202 +52,43 @@ const MealPlan = () => {
     soy: false
   });
 
-  // Effect for real-time updates
+  // Effect for fetching meal plan from flask API on change of dietType or other filters
   useEffect(() => {
-    if (dietType || totalCalories) {
-      fetchMealPlan();
-    }
-  }, [dietType, totalCalories, dietaryRestrictions, isVegetarian]);
+    fetchMealPlan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dietType, dietaryRestrictions, isVegetarian, allergies]);
 
   const fetchMealPlan = async () => {
     if (loading) return; // Prevent multiple simultaneous requests
-    
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Simulating API call with a timeout - replace this with your actual API call
-      setTimeout(() => {
-        // Modified mock data based on selected options
-        let mockData: MealPlan;
-        
-        if (dietType === "low_carb") {
-          mockData = {
-            breakfast: [
-              { food: "Scrambled eggs with spinach", "quantity (multiplier)": 1, calories: 280 },
-              { food: "Avocado", "quantity (multiplier)": 0.5, calories: 120 }
-            ],
-            lunch: [
-              { food: "Grilled chicken salad (no croutons)", "quantity (multiplier)": 1, calories: 350 },
-              { food: "Olive oil dressing", "quantity (multiplier)": 1, calories: 80 }
-            ],
-            dinner: [
-              { food: "Baked salmon", "quantity (multiplier)": 1, calories: 380 },
-              { food: "Steamed broccoli", "quantity (multiplier)": 1.5, calories: 80 },
-              { food: "Cauliflower rice", "quantity (multiplier)": 0.5, calories: 50 }
-            ],
-            snacks: [
-              { food: "Mixed nuts", "quantity (multiplier)": 0.25, calories: 180 },
-              { food: "Celery with almond butter", "quantity (multiplier)": 1, calories: 100 }
-            ]
-          };
-        } else if (dietType === "low_sodium") {
-          mockData = {
-            breakfast: [
-              { food: "Overnight oats with fresh berries", "quantity (multiplier)": 1, calories: 310 },
-              { food: "Fresh orange", "quantity (multiplier)": 1, calories: 65 }
-            ],
-            lunch: [
-              { food: "Homemade vegetable soup (no salt)", "quantity (multiplier)": 1, calories: 220 },
-              { food: "Whole grain bread (no salt)", "quantity (multiplier)": 1, calories: 100 }
-            ],
-            dinner: [
-              { food: "Herb-roasted chicken", "quantity (multiplier)": 1, calories: 280 },
-              { food: "Fresh garden salad", "quantity (multiplier)": 1.5, calories: 120 },
-              { food: "Sweet potato", "quantity (multiplier)": 0.5, calories: 115 }
-            ],
-            snacks: [
-              { food: "Fresh apple", "quantity (multiplier)": 1, calories: 80 },
-              { food: "Unsalted rice cakes", "quantity (multiplier)": 2, calories: 70 }
-            ]
-          };
-        } else { // balanced
-          mockData = {
-            breakfast: [
-              { food: "Oatmeal with berries", "quantity (multiplier)": 1, calories: 350 },
-              { food: "Greek yogurt", "quantity (multiplier)": 0.5, calories: 100 }
-            ],
-            lunch: [
-              { food: "Grilled chicken salad", "quantity (multiplier)": 1, calories: 450 },
-              { food: "Whole grain bread", "quantity (multiplier)": 1, calories: 120 }
-            ],
-            dinner: [
-              { food: "Baked salmon", "quantity (multiplier)": 1, calories: 380 },
-              { food: "Roasted vegetables", "quantity (multiplier)": 1.5, calories: 200 },
-              { food: "Quinoa", "quantity (multiplier)": 0.5, calories: 150 }
-            ],
-            snacks: [
-              { food: "Mixed nuts", "quantity (multiplier)": 0.25, calories: 180 },
-              { food: "Apple", "quantity (multiplier)": 1, calories: 80 }
-            ]
-          };
+        const response = await fetch(`http://localhost:5000/meal_plan/${dietType}/${totalCalories}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch meal plan for diet type ${dietType}`);
         }
-        
-        // Filter based on vegetarian preference
-        if (isVegetarian) {
-          // Remove non-vegetarian items
-          Object.keys(mockData).forEach(mealType => {
-            mockData[mealType] = mockData[mealType].filter(
-              item => !item.food.toLowerCase().includes("chicken") && 
-                     !item.food.toLowerCase().includes("salmon") &&
-                     !item.food.toLowerCase().includes("beef") &&
-                     !item.food.toLowerCase().includes("fish")
-            );
-          });
-          
-          // Add vegetarian alternatives if meals are removed
-          if (mockData.breakfast.length < 2) {
-            mockData.breakfast.push({ food: "Vegetarian breakfast scramble", "quantity (multiplier)": 1, calories: 250 });
-          }
-          
-          if (mockData.lunch.length < 2) {
-            mockData.lunch.push({ food: "Hummus and vegetable wrap", "quantity (multiplier)": 1, calories: 320 });
-          }
-          
-          if (mockData.dinner.length < 2) {
-            mockData.dinner.push({ food: "Lentil curry with rice", "quantity (multiplier)": 1, calories: 380 });
-            mockData.dinner.push({ food: "Steamed vegetables", "quantity (multiplier)": 1, calories: 120 });
-          }
-        }
-        
-        // Filter based on allergies and dietary restrictions
-        if (allergies.gluten || dietaryRestrictions.includes("Gluten-free")) {
-          // Remove gluten-containing items or replace them
-          if (mockData.breakfast.some(item => item.food.includes("bread") || item.food.includes("oats"))) {
-            mockData.breakfast = mockData.breakfast.filter(item => 
-              !item.food.toLowerCase().includes("bread") && !item.food.toLowerCase().includes("oats")
-            );
-            mockData.breakfast.push({ food: "Gluten-free chia pudding", "quantity (multiplier)": 1, calories: 220 });
-          }
-          
-          if (mockData.lunch.some(item => item.food.includes("bread"))) {
-            mockData.lunch = mockData.lunch.filter(item => !item.food.toLowerCase().includes("bread"));
-            mockData.lunch.push({ food: "Gluten-free crackers", "quantity (multiplier)": 1, calories: 100 });
-          }
-        }
-        
-        if (allergies.dairy || dietaryRestrictions.includes("Dairy-free")) {
-          // Remove dairy-containing items or replace them
-          if (mockData.breakfast.some(item => item.food.includes("yogurt"))) {
-            mockData.breakfast = mockData.breakfast.filter(item => !item.food.toLowerCase().includes("yogurt"));
-            mockData.breakfast.push({ food: "Coconut yogurt", "quantity (multiplier)": 0.5, calories: 110 });
-          }
-        }
-        
-        if (allergies.nuts || dietaryRestrictions.includes("Nut-free")) {
-          // Remove nut-containing items or replace them
-          if (mockData.snacks.some(item => item.food.includes("nuts"))) {
-            mockData.snacks = mockData.snacks.filter(item => !item.food.toLowerCase().includes("nuts"));
-            mockData.snacks.push({ food: "Roasted pumpkin seeds", "quantity (multiplier)": 0.25, calories: 170 });
-          }
-        }
+        const data = await response.json() as MealPlan;
 
-        if (dietaryRestrictions.includes("Vegan")) {
-          // Remove animal products
-          Object.keys(mockData).forEach(mealType => {
-            mockData[mealType] = mockData[mealType].filter(
-              item => !item.food.toLowerCase().includes("chicken") && 
-                     !item.food.toLowerCase().includes("salmon") && 
-                     !item.food.toLowerCase().includes("yogurt") &&
-                     !item.food.toLowerCase().includes("egg")
-            );
-          });
-          
-          // Add vegan alternatives
-          if (mockData.breakfast.length < 2) {
-            mockData.breakfast.push({ food: "Tofu scramble", "quantity (multiplier)": 1, calories: 220 });
-          }
-          
-          if (mockData.lunch.length < 2) {
-            mockData.lunch.push({ food: "Lentil soup", "quantity (multiplier)": 1, calories: 250 });
-          }
-          
-          if (mockData.dinner.length < 2) {
-            mockData.dinner.push({ food: "Grilled tempeh", "quantity (multiplier)": 1, calories: 290 });
-          }
-        }
-        
-        // Scale calories based on totalCalories target
-        const currentTotalCalories = Object.values(mockData).reduce((total, mealItems) => {
-          return total + mealItems.reduce((mealTotal, item) => mealTotal + item.calories, 0);
-        }, 0);
-        
-        const calorieRatio = totalCalories / currentTotalCalories;
-        
-        Object.keys(mockData).forEach(mealType => {
-          mockData[mealType].forEach(item => {
-            item.calories = Math.round(item.calories * calorieRatio);
-          });
-        });
-
-        setMealPlan(mockData);
+        // Set the meal plan directly from the fetched data
+        setMealPlan(data);
         setLoading(false);
-        
+
         toast({
-          title: "Meal plan updated",
-          description: "Your daily meal plan has been updated with your preferences.",
+            title: "Meal plan updated",
+            description: "Your daily meal plan has been updated with your preferences.",
         });
-      }, 1000);
     } catch (err) {
-      setError("Failed to fetch meal plan. Please try again.");
-      setLoading(false);
-      toast({
-        title: "Error",
-        description: "Failed to generate meal plan. Please try again.",
-        variant: "destructive",
-      });
+        setError("Failed to fetch meal plan. Please try again.");
+        setLoading(false);
+        toast({
+            title: "Error",
+            description: "Failed to generate meal plan. Please try again.",
+            variant: "destructive",
+        });
     }
-  };
+};
+
 
   const handleCaloriesChange = (value: number[]) => {
     setTotalCalories(value[0]);
@@ -498,7 +338,7 @@ const MealPlan = () => {
           )}
           
           {error && (
-            <Alert variant="destructive" className="my-4">
+            <Alert variant="destructive" className="my-4 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
@@ -548,10 +388,7 @@ const MealPlan = () => {
                           {mealPlan && Object.keys(mealPlan).map(type => (
                             <SelectItem key={type} value={type}>{type}</SelectItem>
                           ))}
-                          <SelectItem value="snacks">snacks</SelectItem>
-                          <SelectItem value="breakfast">breakfast</SelectItem>
-                          <SelectItem value="lunch">lunch</SelectItem>
-                          <SelectItem value="dinner">dinner</SelectItem>
+                          <SelectItem value="all">all</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -579,8 +416,8 @@ const MealPlan = () => {
                 </div>
               )}
               
-              <Tabs defaultValue={Object.keys(mealPlan)[0] || "breakfast"}>
-                <TabsList className="grid grid-cols-4 mb-4">
+              <Tabs defaultValue={Object.keys(mealPlan)[0] || "all"}>
+                <TabsList className="grid grid-cols-3 mb-4">
                   {Object.keys(mealPlan).map((meal) => (
                     <TabsTrigger key={meal} value={meal} className="capitalize">
                       {meal}
