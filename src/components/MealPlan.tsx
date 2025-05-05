@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
-import { Check, X, Plus, Trash2 } from "lucide-react";
+import { Check, X, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface MealPlanItem {
   food: string;
@@ -31,42 +34,179 @@ const MealPlan = () => {
   const [newMealQuantity, setNewMealQuantity] = useState(1);
   const [newMealCalories, setNewMealCalories] = useState(0);
   const [showAddMealForm, setShowAddMealForm] = useState(false);
+  
+  // Dietary restrictions state
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
+  
+  // Allergies state
+  const [allergies, setAllergies] = useState({
+    gluten: false,
+    dairy: false,
+    nuts: false,
+    shellfish: false,
+    eggs: false,
+    soy: false
+  });
+
+  // Effect for real-time updates
+  useEffect(() => {
+    if (dietType || totalCalories) {
+      fetchMealPlan();
+    }
+  }, [dietType, totalCalories, dietaryRestrictions]);
 
   const fetchMealPlan = async () => {
+    if (loading) return; // Prevent multiple simultaneous requests
+    
     setLoading(true);
     setError(null);
     
     try {
       // Simulating API call with a timeout - replace this with your actual API call
       setTimeout(() => {
-        // Example meal plan data - replace with your actual data fetching
-        const mockData = {
-          breakfast: [
-            { food: "Oatmeal with berries", "quantity (multiplier)": 1, calories: 350 },
-            { food: "Greek yogurt", "quantity (multiplier)": 0.5, calories: 100 }
-          ],
-          lunch: [
-            { food: "Grilled chicken salad", "quantity (multiplier)": 1, calories: 450 },
-            { food: "Whole grain bread", "quantity (multiplier)": 1, calories: 120 }
-          ],
-          dinner: [
-            { food: "Baked salmon", "quantity (multiplier)": 1, calories: 380 },
-            { food: "Roasted vegetables", "quantity (multiplier)": 1.5, calories: 200 },
-            { food: "Quinoa", "quantity (multiplier)": 0.5, calories: 150 }
-          ],
-          snacks: [
-            { food: "Mixed nuts", "quantity (multiplier)": 0.25, calories: 180 },
-            { food: "Apple", "quantity (multiplier)": 1, calories: 80 }
-          ]
-        };
+        // Modified mock data based on selected options
+        let mockData: MealPlan;
+        
+        if (dietType === "low_carb") {
+          mockData = {
+            breakfast: [
+              { food: "Scrambled eggs with spinach", "quantity (multiplier)": 1, calories: 280 },
+              { food: "Avocado", "quantity (multiplier)": 0.5, calories: 120 }
+            ],
+            lunch: [
+              { food: "Grilled chicken salad (no croutons)", "quantity (multiplier)": 1, calories: 350 },
+              { food: "Olive oil dressing", "quantity (multiplier)": 1, calories: 80 }
+            ],
+            dinner: [
+              { food: "Baked salmon", "quantity (multiplier)": 1, calories: 380 },
+              { food: "Steamed broccoli", "quantity (multiplier)": 1.5, calories: 80 },
+              { food: "Cauliflower rice", "quantity (multiplier)": 0.5, calories: 50 }
+            ],
+            snacks: [
+              { food: "Mixed nuts", "quantity (multiplier)": 0.25, calories: 180 },
+              { food: "Celery with almond butter", "quantity (multiplier)": 1, calories: 100 }
+            ]
+          };
+        } else if (dietType === "low_sodium") {
+          mockData = {
+            breakfast: [
+              { food: "Overnight oats with fresh berries", "quantity (multiplier)": 1, calories: 310 },
+              { food: "Fresh orange", "quantity (multiplier)": 1, calories: 65 }
+            ],
+            lunch: [
+              { food: "Homemade vegetable soup (no salt)", "quantity (multiplier)": 1, calories: 220 },
+              { food: "Whole grain bread (no salt)", "quantity (multiplier)": 1, calories: 100 }
+            ],
+            dinner: [
+              { food: "Herb-roasted chicken", "quantity (multiplier)": 1, calories: 280 },
+              { food: "Fresh garden salad", "quantity (multiplier)": 1.5, calories: 120 },
+              { food: "Sweet potato", "quantity (multiplier)": 0.5, calories: 115 }
+            ],
+            snacks: [
+              { food: "Fresh apple", "quantity (multiplier)": 1, calories: 80 },
+              { food: "Unsalted rice cakes", "quantity (multiplier)": 2, calories: 70 }
+            ]
+          };
+        } else { // balanced
+          mockData = {
+            breakfast: [
+              { food: "Oatmeal with berries", "quantity (multiplier)": 1, calories: 350 },
+              { food: "Greek yogurt", "quantity (multiplier)": 0.5, calories: 100 }
+            ],
+            lunch: [
+              { food: "Grilled chicken salad", "quantity (multiplier)": 1, calories: 450 },
+              { food: "Whole grain bread", "quantity (multiplier)": 1, calories: 120 }
+            ],
+            dinner: [
+              { food: "Baked salmon", "quantity (multiplier)": 1, calories: 380 },
+              { food: "Roasted vegetables", "quantity (multiplier)": 1.5, calories: 200 },
+              { food: "Quinoa", "quantity (multiplier)": 0.5, calories: 150 }
+            ],
+            snacks: [
+              { food: "Mixed nuts", "quantity (multiplier)": 0.25, calories: 180 },
+              { food: "Apple", "quantity (multiplier)": 1, calories: 80 }
+            ]
+          };
+        }
+        
+        // Filter based on allergies and dietary restrictions
+        if (allergies.gluten || dietaryRestrictions.includes("Gluten-free")) {
+          // Remove gluten-containing items or replace them
+          if (mockData.breakfast.some(item => item.food.includes("bread") || item.food.includes("oats"))) {
+            mockData.breakfast = mockData.breakfast.filter(item => 
+              !item.food.toLowerCase().includes("bread") && !item.food.toLowerCase().includes("oats")
+            );
+            mockData.breakfast.push({ food: "Gluten-free chia pudding", "quantity (multiplier)": 1, calories: 220 });
+          }
+          
+          if (mockData.lunch.some(item => item.food.includes("bread"))) {
+            mockData.lunch = mockData.lunch.filter(item => !item.food.toLowerCase().includes("bread"));
+            mockData.lunch.push({ food: "Gluten-free crackers", "quantity (multiplier)": 1, calories: 100 });
+          }
+        }
+        
+        if (allergies.dairy || dietaryRestrictions.includes("Dairy-free")) {
+          // Remove dairy-containing items or replace them
+          if (mockData.breakfast.some(item => item.food.includes("yogurt"))) {
+            mockData.breakfast = mockData.breakfast.filter(item => !item.food.toLowerCase().includes("yogurt"));
+            mockData.breakfast.push({ food: "Coconut yogurt", "quantity (multiplier)": 0.5, calories: 110 });
+          }
+        }
+        
+        if (allergies.nuts || dietaryRestrictions.includes("Nut-free")) {
+          // Remove nut-containing items or replace them
+          if (mockData.snacks.some(item => item.food.includes("nuts"))) {
+            mockData.snacks = mockData.snacks.filter(item => !item.food.toLowerCase().includes("nuts"));
+            mockData.snacks.push({ food: "Roasted pumpkin seeds", "quantity (multiplier)": 0.25, calories: 170 });
+          }
+        }
+
+        if (dietaryRestrictions.includes("Vegan")) {
+          // Remove animal products
+          Object.keys(mockData).forEach(mealType => {
+            mockData[mealType] = mockData[mealType].filter(
+              item => !item.food.toLowerCase().includes("chicken") && 
+                     !item.food.toLowerCase().includes("salmon") && 
+                     !item.food.toLowerCase().includes("yogurt") &&
+                     !item.food.toLowerCase().includes("egg")
+            );
+          });
+          
+          // Add vegan alternatives
+          if (mockData.breakfast.length < 2) {
+            mockData.breakfast.push({ food: "Tofu scramble", "quantity (multiplier)": 1, calories: 220 });
+          }
+          
+          if (mockData.lunch.length < 2) {
+            mockData.lunch.push({ food: "Lentil soup", "quantity (multiplier)": 1, calories: 250 });
+          }
+          
+          if (mockData.dinner.length < 2) {
+            mockData.dinner.push({ food: "Grilled tempeh", "quantity (multiplier)": 1, calories: 290 });
+          }
+        }
+        
+        // Scale calories based on totalCalories target
+        const currentTotalCalories = Object.values(mockData).reduce((total, mealItems) => {
+          return total + mealItems.reduce((mealTotal, item) => mealTotal + item.calories, 0);
+        }, 0);
+        
+        const calorieRatio = totalCalories / currentTotalCalories;
+        
+        Object.keys(mockData).forEach(mealType => {
+          mockData[mealType].forEach(item => {
+            item.calories = Math.round(item.calories * calorieRatio);
+          });
+        });
 
         setMealPlan(mockData);
         setLoading(false);
+        
         toast({
-          title: "Meal plan generated!",
-          description: "Your daily meal plan has been created successfully.",
+          title: "Meal plan updated",
+          description: "Your daily meal plan has been updated with your preferences.",
         });
-      }, 1500);
+      }, 1000);
     } catch (err) {
       setError("Failed to fetch meal plan. Please try again.");
       setLoading(false);
@@ -165,6 +305,16 @@ const MealPlan = () => {
     });
   };
 
+  // Handle dietary restriction toggle
+  const handleRestrictionToggle = (value: string[]) => {
+    setDietaryRestrictions(value);
+  };
+  
+  // Handle allergy toggle
+  const handleAllergyToggle = (key: keyof typeof allergies) => {
+    setAllergies(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="container max-w-4xl mx-auto py-6">
       <Card className="shadow-lg">
@@ -213,44 +363,97 @@ const MealPlan = () => {
               </div>
             </div>
             
-            <div className="flex flex-col justify-end space-y-4">
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Dietary Restrictions</label>
-                <div className="flex flex-wrap gap-2">
-                  {["Gluten-free", "Dairy-free", "Nut-free", "Vegan"].map((restriction) => (
-                    <Button 
-                      key={restriction} 
-                      variant="outline" 
-                      size="sm"
-                      className="flex items-center gap-1"
-                    >
-                      <span className="w-4 h-4 rounded-full border flex items-center justify-center">
-                        {Math.random() > 0.5 ? <Check className="w-3 h-3" /> : null}
-                      </span>
-                      {restriction}
-                    </Button>
-                  ))}
-                </div>
+                <ToggleGroup 
+                  type="multiple" 
+                  variant="outline"
+                  className="flex flex-wrap gap-2"
+                  value={dietaryRestrictions}
+                  onValueChange={handleRestrictionToggle}
+                >
+                  <ToggleGroupItem value="Gluten-free" className="text-xs">Gluten-free</ToggleGroupItem>
+                  <ToggleGroupItem value="Dairy-free" className="text-xs">Dairy-free</ToggleGroupItem>
+                  <ToggleGroupItem value="Nut-free" className="text-xs">Nut-free</ToggleGroupItem>
+                  <ToggleGroupItem value="Vegan" className="text-xs">Vegan</ToggleGroupItem>
+                </ToggleGroup>
               </div>
               
-              <Button 
-                onClick={fetchMealPlan} 
-                className="w-full mt-4"
-                disabled={loading}
-              >
-                {loading ? "Generating Plan..." : "Generate Meal Plan"}
-              </Button>
+              <div>
+                <label className="block text-sm font-medium mb-2">Allergies</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="gluten" 
+                      checked={allergies.gluten}
+                      onCheckedChange={() => handleAllergyToggle('gluten')}
+                    />
+                    <label htmlFor="gluten" className="text-sm">Gluten</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="dairy" 
+                      checked={allergies.dairy}
+                      onCheckedChange={() => handleAllergyToggle('dairy')}
+                    />
+                    <label htmlFor="dairy" className="text-sm">Dairy</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="nuts" 
+                      checked={allergies.nuts}
+                      onCheckedChange={() => handleAllergyToggle('nuts')}
+                    />
+                    <label htmlFor="nuts" className="text-sm">Nuts</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="shellfish" 
+                      checked={allergies.shellfish}
+                      onCheckedChange={() => handleAllergyToggle('shellfish')}
+                    />
+                    <label htmlFor="shellfish" className="text-sm">Shellfish</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="eggs" 
+                      checked={allergies.eggs}
+                      onCheckedChange={() => handleAllergyToggle('eggs')}
+                    />
+                    <label htmlFor="eggs" className="text-sm">Eggs</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="soy" 
+                      checked={allergies.soy}
+                      onCheckedChange={() => handleAllergyToggle('soy')}
+                    />
+                    <label htmlFor="soy" className="text-sm">Soy</label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-start">
-              <X className="w-5 h-5 mr-2 mt-0.5" />
-              <p>{error}</p>
+          {loading && (
+            <div className="flex justify-center my-8">
+              <div className="animate-pulse flex flex-col items-center">
+                <div className="h-12 w-12 mb-2 rounded-full bg-blue-200"></div>
+                <div className="text-sm text-muted-foreground">Updating meal plan...</div>
+              </div>
             </div>
           )}
           
-          {mealPlan && (
+          {error && (
+            <Alert variant="destructive" className="my-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {mealPlan && !loading && (
             <div className="mt-6 border-t pt-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Your Daily Meals</h3>
