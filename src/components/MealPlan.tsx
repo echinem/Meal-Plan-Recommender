@@ -13,7 +13,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Toggle } from "@/components/ui/toggle";
 
 interface MealPlanItem {
-  food: string;
+  food_name: string;
   'quantity (multiplier)': number;
   calories: number;
 }
@@ -56,38 +56,41 @@ const MealPlan = () => {
   useEffect(() => {
     fetchMealPlan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dietType, dietaryRestrictions, isVegetarian, allergies]);
+  }, [dietType, dietaryRestrictions, isVegetarian, allergies, totalCalories]);
 
   const fetchMealPlan = async () => {
-    if (loading) return; // Prevent multiple simultaneous requests
+    if (loading) return;
     setLoading(true);
     setError(null);
-
+  
     try {
-        const response = await fetch(`http://localhost:5000/meal_plan/${dietType}/${totalCalories}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch meal plan for diet type ${dietType}`);
-        }
-        const data = await response.json() as MealPlan;
-
-        // Set the meal plan directly from the fetched data
-        setMealPlan(data);
-        setLoading(false);
-
-        toast({
-            title: "Meal plan updated",
-            description: "Your daily meal plan has been updated with your preferences.",
-        });
+      const response = await fetch(
+        `http://localhost:5000/meal_plan/${dietType}/${totalCalories}?vegetarian=${isVegetarian}`
+      );
+  
+      if (!response.ok) {
+        throw new Error(`Failed to fetch meal plan for diet type ${dietType}`);
+      }
+  
+      const data = await response.json() as MealPlan;
+      setMealPlan(data);
+      setLoading(false);
+  
+      toast({
+        title: "Meal plan updated",
+        description: "Your daily meal plan has been updated with your preferences.",
+      });
     } catch (err) {
-        setError("Failed to fetch meal plan. Please try again.");
-        setLoading(false);
-        toast({
-            title: "Error",
-            description: "Failed to generate meal plan. Please try again.",
-            variant: "destructive",
-        });
+      setError("Failed to fetch meal plan. Please try again.");
+      setLoading(false);
+      toast({
+        title: "Error",
+        description: "Failed to generate meal plan. Please try again.",
+        variant: "destructive",
+      });
     }
-};
+  };
+  
 
 
   const handleCaloriesChange = (value: number[]) => {
@@ -132,7 +135,7 @@ const MealPlan = () => {
     
     // Add the new meal item
     updatedMealPlan[newMealType].push({
-      food: newMealName,
+      food_name: newMealName,
       'quantity (multiplier)': newMealQuantity,
       calories: newMealCalories
     });
@@ -173,7 +176,7 @@ const MealPlan = () => {
     
     toast({
       title: "Meal removed",
-      description: `${removedItem.food} has been removed from your meal plan.`,
+      description: `${removedItem.food_name} has been removed from your meal plan.`,
     });
   };
 
@@ -434,7 +437,7 @@ const MealPlan = () => {
                           className="flex justify-between items-center py-3 border-b last:border-b-0"
                         >
                           <div>
-                            <h4 className="font-medium">{item.food}</h4>
+                            <h4 className="font-medium">{item.food_name}</h4>
                             <p className="text-sm text-muted-foreground">
                               Quantity: {item['quantity (multiplier)']}
                             </p>
