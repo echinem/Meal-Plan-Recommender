@@ -1,20 +1,18 @@
 # Meal Plan Recommender
 
-## Project info
-
-**URL**: https://lovable.dev/projects/d4316dfa-5f63-4e7a-847c-9bf5b3332d41
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone https://github.com/echinem/Meal-Plan-Recommender
 
 # Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+cd Meal-Plan-Recommender
 
 # Step 3: Install the necessary dependencies.
 npm i
+npm install date-fns@3.6.0
 
 # Step 4: Start the development server with auto-reloading and an instant preview.
+(run on different terminals)
+python diet.py
+
 npm run dev
 ```
 
